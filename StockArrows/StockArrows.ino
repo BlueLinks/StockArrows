@@ -1,17 +1,9 @@
-/**
-   BasicHTTPClient.ino
-
-    Created on: 24.05.2015
-
-*/
-
 #include <Arduino.h>
-
+#include <ArduinoJson.h>
+#include <math.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
-
 #include <ESP8266HTTPClient.h>
-
 #include <WiFiClientSecureBearSSL.h>
 
 ESP8266WiFiMulti WiFiMulti;
@@ -48,6 +40,7 @@ void makeGetRequest(){
     HTTPClient https;
 
     Serial.print("[HTTPS] begin...\n");
+    https.useHTTP10(true);
     String getRequestURL = "https://finnhub.io/api/v1/quote?symbol=SPY&token=" + APIKEY;
     if (https.begin(*client, getRequestURL)) {  // HTTPS
 
@@ -61,8 +54,7 @@ void makeGetRequest(){
 
         // file found at server
         if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-          String payload = https.getString();
-          Serial.println(payload);
+          parseResponse(https.getStream());
         }
       } else {
         Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
@@ -72,6 +64,35 @@ void makeGetRequest(){
     } else {
       Serial.printf("[HTTPS] Unable to connect\n");
     }
+}
+
+void parseResponse(WiFiClient stream){
+  // We have a response
+  // Parse response
+  StaticJsonDocument<192> doc;
+  deserializeJson(doc, stream);
+  // get percentage change of stock
+  float percentChange = doc["dp"];
+  if (signbit(percentChange)){
+    StockDown();
+  }
+  else {
+    StockUp();
+  }
+}
+
+void StockUp(){
+  // Stock price has gone up
+  Serial.printf("Stock price has gone UP\n");
+  digitalWrite(GREEN_RELAY, HIGH);
+  digitalWrite(RED_RELAY, LOW);
+}
+
+void StockDown(){
+  // Stock price has gone down
+  Serial.printf("Stock price has gone UP\n");
+  digitalWrite(GREEN_RELAY, LOW);
+  digitalWrite(RED_RELAY, HIGH);
 }
 
 void loop() {
