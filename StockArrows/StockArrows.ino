@@ -54,7 +54,9 @@ void makeGetRequest(){
 
         // file found at server
         if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-          parseResponse(https.getStream());
+          DynamicJsonDocument doc(192);
+          deserializeJson(doc, https.getStream());
+          parseResponse(doc["dp"]);
         }
       } else {
         Serial.printf("[HTTPS] GET... failed, error: %s\n", https.errorToString(httpCode).c_str());
@@ -66,19 +68,16 @@ void makeGetRequest(){
     }
 }
 
-void parseResponse(WiFiClient stream){
+void parseResponse(float percentChange){
   // We have a response
   // Parse response
-  StaticJsonDocument<192> doc;
-  deserializeJson(doc, stream);
-  // get percentage change of stock
-  float percentChange = doc["dp"];
   if (signbit(percentChange)){
     StockDown();
   }
   else {
     StockUp();
   }
+  Serial.println(percentChange, 4);
 }
 
 void StockUp(){
@@ -90,7 +89,7 @@ void StockUp(){
 
 void StockDown(){
   // Stock price has gone down
-  Serial.printf("Stock price has gone UP\n");
+  Serial.printf("Stock price has gone DOWN\n");
   digitalWrite(GREEN_RELAY, LOW);
   digitalWrite(RED_RELAY, HIGH);
 }
@@ -100,5 +99,5 @@ void loop() {
   if ((WiFiMulti.run() == WL_CONNECTED)) {
     makeGetRequest();    
   }
-  delay(500);
+  delay(2000);
 }                   
